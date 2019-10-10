@@ -49,7 +49,6 @@ bool EnumObjects( PCWSTR Dir, PCWSTR Type, int &matchingTypeCount, PCWSTR search
   OBJECT_ATTRIBUTES oa;
   UNICODE_STRING objname;
   HANDLE dirHandle = NULL;
-  int entries = 0; 
 
   matchingTypeCount = matchingNameCount = 0;
   
@@ -86,7 +85,6 @@ bool EnumObjects( PCWSTR Dir, PCWSTR Type, int &matchingTypeCount, PCWSTR search
               }
               i++;            
             }
-            entries = i;
           }      
 
           if ( ntStatus != STATUS_MORE_ENTRIES) {

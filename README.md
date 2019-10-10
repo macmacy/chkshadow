@@ -25,7 +25,7 @@ I wrote this simple program that checks for this system object using NtOpenDirec
 
 ## Building
 
-Run Visual Studio 2010 Command Prompt and simply run:
+Run Visual Studio Command Prompt (I tried with 2010 and 2015) and simply run:
 
 `cl chkshadow.cpp`
 
