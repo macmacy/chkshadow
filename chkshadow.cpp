@@ -6,7 +6,7 @@
  */
 #include <windows.h>
 #include <tchar.h>
-#include <cstdio>
+#include <stdio.h>
 #include <winternl.h>
 
 /* Set from command line for more output
@@ -56,39 +56,30 @@ bool EnumObjects( PCWSTR Dir, PCWSTR Type, int &matchingTypeCount, PCWSTR search
   _RtlInitUnicodeString(&objname, Dir  );
   InitializeObjectAttributes(&oa, &objname, 0, NULL, NULL);
   ntStatus = _NtOpenDirectoryObject(&dirHandle, DIRECTORY_QUERY | DIRECTORY_TRAVERSE, &oa);
-  if( NT_SUCCESS(ntStatus) )
-  {
+  if( NT_SUCCESS(ntStatus)) {
     ULONG context = 0, bytes = 0;
     BOOLEAN firstCall = TRUE;
     POBJECT_DIRECTORY_INFORMATION infoBuffer = NULL;
     
     bool list = true;
-    while (list)
-    {
+    while (list) {
       // First call with size 0, to get necessary buffer size
       // This behaviour is not documented for NtQueryDirectoryObject, but seems it works the same as  other Win32 API functions
       ntStatus = _NtQueryDirectoryObject(dirHandle, infoBuffer, 0L, FALSE, firstCall, &context, &bytes);
-      if (ntStatus == STATUS_BUFFER_TOO_SMALL)
-      {
+      if (ntStatus == STATUS_BUFFER_TOO_SMALL) {
         SIZE_T bufferSize = bytes;
         infoBuffer = new OBJECT_DIRECTORY_INFORMATION[bufferSize];
-        if ( infoBuffer )
-        {
+        if ( infoBuffer ) {
           ntStatus = _NtQueryDirectoryObject(dirHandle, infoBuffer, bufferSize, FALSE, firstCall, &context, &bytes);
-          if( NT_SUCCESS(ntStatus) )
-          {
+          if( NT_SUCCESS(ntStatus) ) {
             ULONG i=0;            
-            while ( infoBuffer[i].Name.Buffer )
-            {
+            while ( infoBuffer[i].Name.Buffer ) {
               POBJECT_DIRECTORY_INFORMATION info = &infoBuffer[i];              
-              if ( callback )
-              {
+              if ( callback ) {
                 callback( info );
               }
-              if( wcsncmp(info->TypeName.Buffer, Type, info->TypeName.Length / sizeof(WCHAR)) == 0)
-              {
-                if ( wcsstr( info->Name.Buffer, searchedEventName) != NULL ) 
-                {
+              if( wcsncmp(info->TypeName.Buffer, Type, info->TypeName.Length / sizeof(WCHAR)) == 0) {
+                if ( wcsstr( info->Name.Buffer, searchedEventName) != NULL ) {
                   matchingNameCount++;
                 }
                 matchingTypeCount++;
@@ -98,15 +89,13 @@ bool EnumObjects( PCWSTR Dir, PCWSTR Type, int &matchingTypeCount, PCWSTR search
             entries = i;
           }      
 
-          if ( ntStatus != STATUS_MORE_ENTRIES)
-          {
+          if ( ntStatus != STATUS_MORE_ENTRIES) {
             list = false;
           }
           delete infoBuffer;
         }
       }
-      else
-      {
+      else {
         list = false;
         result = false;
       }
@@ -115,8 +104,7 @@ bool EnumObjects( PCWSTR Dir, PCWSTR Type, int &matchingTypeCount, PCWSTR search
     _NtClose(dirHandle);
 
   }
-  else
-  {
+  else {
     result = false;
   }
   return result;
@@ -128,8 +116,7 @@ bool EnumObjects( PCWSTR Dir, PCWSTR Type, int &matchingTypeCount, PCWSTR search
 void  printObject(POBJECT_DIRECTORY_INFORMATION info)
 {
   static int ord = 0;
-  if ( verbose )
-  {
+  if ( verbose ) {
     printf( _T("TYPE[%d]: %S\n"), ord, info->TypeName.Buffer);
     printf( _T("NAME[%d]: %S\n"), ord, info->Name.Buffer);           
     printf("\n");    
@@ -145,20 +132,16 @@ int _tmain(int argc, char** argv)
   int ec = 1;
   DWORD sid = INVALID_SESSION_ID;
 
-  if ( argc > 1 )
-  {
+  if ( argc > 1 ) {
     // Very, very, very primitive command-line "parsing":
     
     char *end;
     sid = strtol( argv[1], &end, 10 );
     // On successful conversion, strtol should point to end of string:
-    if ( *end == 0 )
-    {
+    if ( *end == 0 ) {
       printf("Checking windows session %d...\n", sid);
-      if ( argc > 2 )
-      {
-        if ( strcmp( argv[2], "v" ) == 0 )
-        {
+      if ( argc > 2 ) {
+        if ( strcmp( argv[2], "v" ) == 0 ) {
           verbose = true;
         }
       }
@@ -169,23 +152,20 @@ int _tmain(int argc, char** argv)
       sid = INVALID_SESSION_ID;
     }
   }
-  else
-  {
+  else {
     DWORD currentPid = GetCurrentProcessId();
     ProcessIdToSessionId(currentPid, &sid );
     printf("Checking current windows session (%d)...\n", sid);
   }
 
-  if ( sid != INVALID_SESSION_ID )
-  {
+  if ( sid != INVALID_SESSION_ID ) {
     HMODULE hNtDll = ::GetModuleHandle(_T("ntdll.dll"));
     *(FARPROC*)&_NtOpenDirectoryObject = ::GetProcAddress(hNtDll, "NtOpenDirectoryObject");
     *(FARPROC*)&_NtQueryDirectoryObject = ::GetProcAddress(hNtDll, "NtQueryDirectoryObject");
     *(FARPROC*)&_RtlInitUnicodeString = ::GetProcAddress(hNtDll, "RtlInitUnicodeString");
     *(FARPROC*)&_NtClose = ::GetProcAddress(hNtDll, "NtClose");
   
-    if ( _NtOpenDirectoryObject && _NtQueryDirectoryObject && _RtlInitUnicodeString && _NtClose )
-    {
+    if ( _NtOpenDirectoryObject && _NtQueryDirectoryObject && _RtlInitUnicodeString && _NtClose ) {
       wchar_t Dir[512];
       swprintf( Dir, sizeof(Dir), L"\\Sessions\\%d\\BaseNamedObjects", sid );
       int objectsMatchingType = 0;
@@ -194,26 +174,19 @@ int _tmain(int argc, char** argv)
       PCWSTR ObjectType = L"Event";
 
       printf( _T("\nListing '%S', type: '%S'\n"), Dir, ObjectType );
-      if ( EnumObjects( Dir , ObjectType, objectsMatchingType, L"RDPSchedulerEvent", objectsMatchingName, printObject ) )
-      {
+      if ( EnumObjects( Dir , ObjectType, objectsMatchingType, L"RDPSchedulerEvent", objectsMatchingName, printObject ) ) {
         ec = 0;
         printf("Found objects of '%S' type: %d\n", ObjectType, objectsMatchingType );
-        if ( objectsMatchingName )
-        {
+        if ( objectsMatchingName ) {
           printf("*** Session %d looks like being shadowed! ***\n", sid);
         }
-        else
-        {
+        else {
           printf("Shadowing not detected for session %d.\n", sid);
         }
-      }
-      else
-      {
+      } else {
         printf("Failed to enumarate objects\n");
       }
-    }
-    else
-    {      
+    } else {      
       printf(_T("Failed to retrieve ntdll.dll function pointers\n"));
     }
   }
