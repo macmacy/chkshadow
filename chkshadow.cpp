@@ -40,6 +40,9 @@ typedef struct _OBJECT_DIRECTORY_INFORMATION {
 #endif
 
 
+// Arbitratry limit for allocating buffer for NtQueryDirectoryObject
+#define QUERY_BUFFER_MAX_SIZE           (1024 * 1024 * 32)
+
 typedef  void (*EnumCallback)(POBJECT_DIRECTORY_INFORMATION);
 
 bool EnumObjects( PCWSTR Dir, PCWSTR Type, int &matchingTypeCount, PCWSTR searchedEventName, int &matchingNameCount, EnumCallback callback )
@@ -59,15 +62,24 @@ bool EnumObjects( PCWSTR Dir, PCWSTR Type, int &matchingTypeCount, PCWSTR search
     ULONG context = 0, bytes = 0;
     BOOLEAN firstCall = TRUE;
     POBJECT_DIRECTORY_INFORMATION infoBuffer = NULL;
+    // Start with some small buffer
+    ULONG bufferSize = 2048;
     
     bool list = true;
     while (list) {
-      // First call with size 0, to get necessary buffer size
-      // This behaviour is not documented for NtQueryDirectoryObject, but seems it works the same as  other Win32 API functions
-      ntStatus = _NtQueryDirectoryObject(dirHandle, infoBuffer, 0L, FALSE, firstCall, &context, &bytes);
-      if (ntStatus == STATUS_BUFFER_TOO_SMALL) {
-        SIZE_T bufferSize = bytes;
+      // Call NtQueryDirectoryObject in loop until suggested buffer size is enough
+      do {
+        // double the buffer in each iteration
+        bufferSize *= 2;
+        if ( infoBuffer ) {
+          delete infoBuffer;
+        }
         infoBuffer = new OBJECT_DIRECTORY_INFORMATION[bufferSize];
+        ntStatus = _NtQueryDirectoryObject(dirHandle, infoBuffer, bufferSize, FALSE, firstCall, &context, &bytes);
+      } while ((ntStatus == STATUS_BUFFER_TOO_SMALL || ntStatus == STATUS_MORE_ENTRIES) && (bufferSize < QUERY_BUFFER_MAX_SIZE));
+
+      if ( NT_SUCCESS(ntStatus))
+      {
         if ( infoBuffer ) {
           ntStatus = _NtQueryDirectoryObject(dirHandle, infoBuffer, bufferSize, FALSE, firstCall, &context, &bytes);
           if( NT_SUCCESS(ntStatus) ) {
