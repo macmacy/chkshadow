@@ -13,7 +13,7 @@ In Window, you can connect to other user session on the same Terminal Server wit
 "N" is Windows session identifier.
 
 When you accept the request, your session is viewed (or controlled) by other user as long as shadow session is not terminated.
-I was found, however, no easy way to verify whether the session is being shadowed.
+I found, however, no easy way to verify whether the session is being shadowed.
 
 I observed, that when shadow is in progress, there is `RdpSa.exe` program running in the session being shadowed.
 Checking if this program is running, however, is not enough to tell whether your session is being shadowed.
