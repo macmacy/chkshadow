@@ -2,7 +2,7 @@
 
 ## Note
 
-The check this program performs is purely heurisic. There is no guarantee that the method used here will work 100%, or
+The check this program performs is purely heuristic. There is no guarantee that the method used here will work 100%, or
 even if it is correct at all. Use at your own risk.
 
 ## Description
